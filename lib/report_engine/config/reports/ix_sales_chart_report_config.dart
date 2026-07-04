@@ -1,0 +1,108 @@
+import 'package:flutter/material.dart';
+
+import '../../models/models.dart';
+
+/// IX document-style sales performance report with charts.
+final ixSalesChartReport = ReportDefinition(
+  id: 'ix-sales-chart',
+  title: 'IX Sales Performance',
+  description: 'Document-style sales charts with monthly trends and regional breakdown',
+  category: 'Sales',
+  icon: Icons.insert_chart_outlined,
+  datasource: 'sales-overview',
+  viewMode: ReportViewMode.document,
+  metadata: const {
+    'companyName': 'IX Corporation',
+    'address': '123 Main Street',
+    'city': 'Anytown, ST 12345',
+    'phone': '(555) 123-4567',
+    'email': 'info@ix.com',
+    'website': 'www.ix.com',
+  },
+  filters: const [
+    FilterDefinition(
+      id: 'dateRange',
+      label: 'Date Range',
+      type: ReportFilterType.dateRange,
+    ),
+    FilterDefinition(
+      id: 'region',
+      label: 'Region',
+      type: ReportFilterType.singleSelect,
+      apiEndpoint: '/api/regions',
+    ),
+  ],
+  charts: const [
+    ChartDefinition(
+      id: 'monthly-trend',
+      title: 'Monthly Revenue Trend',
+      subtitle: 'Revenue and profit over the selected period',
+      chartType: ReportChartType.line,
+      dataKey: 'monthlyTrend',
+      xField: 'month',
+      yFields: ['revenue', 'profit'],
+      legend: ChartLegendConfig(visible: true, position: 'bottom'),
+      tooltip: ChartTooltipConfig(enabled: true, shared: true),
+      xAxis: ChartAxisConfig(title: 'Month'),
+      yAxis: ChartAxisConfig(title: 'Amount (\$)'),
+    ),
+    ChartDefinition(
+      id: 'region-sales',
+      title: 'Sales by Region',
+      subtitle: 'Revenue comparison across regions',
+      chartType: ReportChartType.column,
+      dataKey: 'regionSales',
+      xField: 'region',
+      yFields: ['revenue'],
+      legend: ChartLegendConfig(visible: false),
+      tooltip: ChartTooltipConfig(enabled: true),
+      xAxis: ChartAxisConfig(title: 'Region'),
+      yAxis: ChartAxisConfig(title: 'Revenue (\$)'),
+    ),
+    ChartDefinition(
+      id: 'region-orders',
+      title: 'Orders by Region',
+      subtitle: 'Order volume by geographic region',
+      chartType: ReportChartType.bar,
+      dataKey: 'regionSales',
+      xField: 'region',
+      yFields: ['orders'],
+      legend: ChartLegendConfig(visible: false),
+      tooltip: ChartTooltipConfig(enabled: true),
+      xAxis: ChartAxisConfig(title: 'Orders'),
+      yAxis: ChartAxisConfig(title: 'Region'),
+    ),
+  ],
+  sections: const [
+    SectionDefinition(id: 'filter-section', type: SectionType.filters),
+    SectionDefinition(id: 'charts-section', type: SectionType.charts),
+  ],
+  exportOptions: const ExportDefinition(
+    title: 'IX Sales Performance',
+    orientation: PageOrientation.portrait,
+    header: ExportHeaderConfig(
+      showCompanyName: true,
+      companyName: 'IX Corporation',
+      showReportTitle: true,
+      showDate: true,
+    ),
+    footer: ExportFooterConfig(
+      showPageNumber: true,
+      showTotalPages: true,
+      showDate: true,
+    ),
+  ),
+  toolbar: const ToolbarDefinition(
+    showPageNavigation: true,
+    showZoom: true,
+    showFitPage: true,
+    showFitWidth: true,
+    showSearch: false,
+    showPrint: true,
+    showExportPdf: true,
+    showExportExcel: true,
+    showExportCsv: true,
+    showExportImage: true,
+    showRefresh: true,
+  ),
+);
