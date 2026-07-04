@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:general_reports/core/constants/app_sizes.dart';
+import 'package:general_reports/core/extensions/context_extensions.dart';
+import 'package:general_reports/utils/responsive_utils.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../models/models.dart';
@@ -20,9 +22,15 @@ class PivotChart extends StatelessWidget {
 
     final theme = Theme.of(context);
 
+    final chartHeight = context.isMobile
+        ? ResponsiveUtils.chartHeight(context)
+        : context.isTablet
+            ? AppSizes.chartMinHeight + 80
+            : AppSizes.chartMaxHeight;
+
     return Container(
-      height: AppSizes.chartMaxHeight,
-      padding: const EdgeInsets.all(AppSizes.md),
+      height: chartHeight,
+      padding: EdgeInsets.all(context.isMobile ? AppSizes.sm : AppSizes.md),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppSizes.radiusSm),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:general_reports/core/constants/app_sizes.dart';
+import 'package:general_reports/core/extensions/context_extensions.dart';
 import 'package:general_reports/core/extensions/l10n_extensions.dart';
 import 'package:general_reports/widgets/common/responsive_scaffold.dart';
 
@@ -46,9 +47,7 @@ class _PivotReportView extends StatelessWidget {
           return Column(
             children: [
               _buildToolbar(context, state),
-              Expanded(
-                child: _buildBody(context, state),
-              ),
+              Expanded(child: _buildBody(context, state)),
             ],
           );
         },
@@ -99,6 +98,16 @@ class _PivotReportView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, PivotReportState state) {
+    if (context.isMobile) {
+      return _buildMobileBody(context, state);
+    }
+    if (context.isTablet) {
+      return _buildTabletBody(context, state);
+    }
+    return _buildDesktopBody(context, state);
+  }
+
+  Widget _buildDesktopBody(BuildContext context, PivotReportState state) {
     final theme = Theme.of(context);
 
     return Row(
@@ -106,38 +115,15 @@ class _PivotReportView extends StatelessWidget {
       children: [
         SizedBox(
           width: 240,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSizes.sm),
-            child: Column(
-              children: [
-                DataSourceSelector(
-                  dataSources: state.dataSources,
-                  selected: state.selectedDataSource,
-                  onSelected: context.read<PivotReportCubit>().selectDataSource,
-                ),
-                const SizedBox(height: AppSizes.sm),
-                Expanded(
-                  child: FieldSelectorPanel(
-                    availableFields: state.availableFields,
-                    usedFields: [...state.rowFields, ...state.columnFields],
-                    usedValues: state.valueFields,
-                    onFieldAction: (field, role) =>
-                        _handleFieldAction(context, field, role),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: _buildFieldsSidebar(context, state),
         ),
         VerticalDivider(width: 1, color: theme.colorScheme.outlineVariant),
         Expanded(
           child: Column(
             children: [
-              _buildDropZones(context, state),
+              _buildDropZones(context, state, columns: 4),
               Divider(height: 1, color: theme.colorScheme.outlineVariant),
-              Expanded(
-                child: _buildResultArea(context, state),
-              ),
+              Expanded(child: _buildResultArea(context, state)),
             ],
           ),
         ),
@@ -145,77 +131,202 @@ class _PivotReportView extends StatelessWidget {
     );
   }
 
-  Widget _buildDropZones(BuildContext context, PivotReportState state) {
+  Widget _buildTabletBody(BuildContext context, PivotReportState state) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 200,
+          child: _buildFieldsSidebar(context, state),
+        ),
+        VerticalDivider(width: 1, color: theme.colorScheme.outlineVariant),
+        Expanded(
+          child: Column(
+            children: [
+              _buildDropZones(context, state, columns: 2),
+              Divider(height: 1, color: theme.colorScheme.outlineVariant),
+              Expanded(child: _buildResultArea(context, state)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileBody(BuildContext context, PivotReportState state) {
+    final theme = Theme.of(context);
+
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Material(
+            color: theme.colorScheme.surfaceContainerLow,
+            child: const TabBar(
+              tabs: [
+                Tab(
+                  height: 44,
+                  icon: Icon(Icons.tune, size: 18),
+                  text: 'Layout',
+                ),
+                Tab(
+                  height: 44,
+                  icon: Icon(Icons.grid_on, size: 18),
+                  text: 'Results',
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSizes.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DataSourceSelector(
+                        dataSources: state.dataSources,
+                        selected: state.selectedDataSource,
+                        onSelected:
+                            context.read<PivotReportCubit>().selectDataSource,
+                      ),
+                      const SizedBox(height: AppSizes.sm),
+                      SizedBox(
+                        height: 240,
+                        child: FieldSelectorPanel(
+                          availableFields: state.availableFields,
+                          usedFields: [
+                            ...state.rowFields,
+                            ...state.columnFields,
+                          ],
+                          usedValues: state.valueFields,
+                          onFieldAction: (field, role) =>
+                              _handleFieldAction(context, field, role),
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.sm),
+                      _buildDropZones(context, state, columns: 1),
+                    ],
+                  ),
+                ),
+                _buildResultArea(context, state),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldsSidebar(BuildContext context, PivotReportState state) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSizes.sm),
+      child: Column(
+        children: [
+          DataSourceSelector(
+            dataSources: state.dataSources,
+            selected: state.selectedDataSource,
+            onSelected: context.read<PivotReportCubit>().selectDataSource,
+          ),
+          const SizedBox(height: AppSizes.sm),
+          Expanded(
+            child: FieldSelectorPanel(
+              availableFields: state.availableFields,
+              usedFields: [...state.rowFields, ...state.columnFields],
+              usedValues: state.valueFields,
+              onFieldAction: (field, role) =>
+                  _handleFieldAction(context, field, role),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropZones(
+    BuildContext context,
+    PivotReportState state, {
+    required int columns,
+  }) {
     final cubit = context.read<PivotReportCubit>();
     final theme = Theme.of(context);
+
+    final zones = [
+      PivotDropZone(
+        title: 'Rows',
+        icon: Icons.table_rows,
+        accentColor: Colors.blue,
+        fields: state.rowFields,
+        acceptRole: PivotFieldRole.row,
+        onFieldAccepted: cubit.addFieldToRows,
+        onFieldRemoved: cubit.removeFieldFromRows,
+      ),
+      PivotDropZone(
+        title: 'Columns',
+        icon: Icons.view_column,
+        accentColor: Colors.green,
+        fields: state.columnFields,
+        acceptRole: PivotFieldRole.column,
+        onFieldAccepted: cubit.addFieldToColumns,
+        onFieldRemoved: cubit.removeFieldFromColumns,
+      ),
+      PivotDropZone(
+        title: 'Values',
+        icon: Icons.functions,
+        accentColor: Colors.orange,
+        valueFields: state.valueFields,
+        acceptRole: PivotFieldRole.value,
+        onFieldAccepted: cubit.addFieldToValues,
+        onValueRemoved: cubit.removeValueField,
+        onValueTap: (value) => _showAggregationDialog(context, value),
+      ),
+      PivotDropZone(
+        title: 'Filters',
+        icon: Icons.filter_list,
+        accentColor: Colors.purple,
+        fields: state.filters
+            .map((f) => PivotField(
+                  name: f.fieldName,
+                  displayName: f.fieldName,
+                  fieldType: PivotFieldType.text,
+                  role: PivotFieldRole.filter,
+                ))
+            .toList(),
+        acceptRole: PivotFieldRole.filter,
+        onFieldAccepted: cubit.addFieldToFilters,
+        onFieldRemoved: (field) => cubit.removeFilter(
+          PivotFilter(fieldName: field.name),
+        ),
+      ),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.sm),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLowest,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: PivotDropZone(
-              title: 'Rows',
-              icon: Icons.table_rows,
-              accentColor: Colors.blue,
-              fields: state.rowFields,
-              acceptRole: PivotFieldRole.row,
-              onFieldAccepted: cubit.addFieldToRows,
-              onFieldRemoved: cubit.removeFieldFromRows,
+      child: columns == 4
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < zones.length; i++) ...[
+                  if (i > 0) const SizedBox(width: AppSizes.sm),
+                  Expanded(child: zones[i]),
+                ],
+              ],
+            )
+          : GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: columns,
+              crossAxisSpacing: AppSizes.sm,
+              mainAxisSpacing: AppSizes.sm,
+              childAspectRatio: columns == 1 ? 3.2 : 2.0,
+              children: zones,
             ),
-          ),
-          const SizedBox(width: AppSizes.sm),
-          Expanded(
-            child: PivotDropZone(
-              title: 'Columns',
-              icon: Icons.view_column,
-              accentColor: Colors.green,
-              fields: state.columnFields,
-              acceptRole: PivotFieldRole.column,
-              onFieldAccepted: cubit.addFieldToColumns,
-              onFieldRemoved: cubit.removeFieldFromColumns,
-            ),
-          ),
-          const SizedBox(width: AppSizes.sm),
-          Expanded(
-            child: PivotDropZone(
-              title: 'Values',
-              icon: Icons.functions,
-              accentColor: Colors.orange,
-              valueFields: state.valueFields,
-              acceptRole: PivotFieldRole.value,
-              onFieldAccepted: cubit.addFieldToValues,
-              onValueRemoved: cubit.removeValueField,
-              onValueTap: (value) => _showAggregationDialog(context, value),
-            ),
-          ),
-          const SizedBox(width: AppSizes.sm),
-          Expanded(
-            child: PivotDropZone(
-              title: 'Filters',
-              icon: Icons.filter_list,
-              accentColor: Colors.purple,
-              fields: state.filters
-                  .map((f) => PivotField(
-                        name: f.fieldName,
-                        displayName: f.fieldName,
-                        fieldType: PivotFieldType.text,
-                        role: PivotFieldRole.filter,
-                      ))
-                  .toList(),
-              acceptRole: PivotFieldRole.filter,
-              onFieldAccepted: cubit.addFieldToFilters,
-              onFieldRemoved: (field) => cubit.removeFilter(
-                PivotFilter(fieldName: field.name),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -235,23 +346,27 @@ class _PivotReportView extends StatelessWidget {
 
     if (state.status == PivotReportStatus.error) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48,
-                color: Theme.of(context).colorScheme.error),
-            const SizedBox(height: AppSizes.md),
-            Text(
-              state.errorMessage ?? 'An error occurred',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-            const SizedBox(height: AppSizes.md),
-            FilledButton.icon(
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Retry'),
-              onPressed: context.read<PivotReportCubit>().executeReport,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 48, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: AppSizes.md),
+              Text(
+                state.errorMessage ?? 'An error occurred',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(height: AppSizes.md),
+              FilledButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retry'),
+                onPressed: context.read<PivotReportCubit>().executeReport,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -309,9 +424,9 @@ class _PivotReportView extends StatelessWidget {
     final result = await AggregationSelector.show(context, value);
     if (result != null && context.mounted) {
       context.read<PivotReportCubit>().updateValueAggregation(
-        value.field,
-        result,
-      );
+            value.field,
+            result,
+          );
     }
   }
 
@@ -323,9 +438,9 @@ class _PivotReportView extends StatelessWidget {
     );
     if (result != null && context.mounted) {
       context.read<PivotReportCubit>().saveCurrentReport(
-        result.name,
-        description: result.description,
-      );
+            result.name,
+            description: result.description,
+          );
     }
   }
 
